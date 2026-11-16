@@ -22,7 +22,7 @@ jobs:
     needs: nro
     strategy:
       matrix:
-        os: [macos-15, macos-15-intel, windows-latest]
+        os: [macos-26, macos-15-intel, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
