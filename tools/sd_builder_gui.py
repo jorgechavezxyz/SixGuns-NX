@@ -80,7 +80,11 @@ class App:
         self.b_build.pack(side="left", padx=6)
         self.b_open.pack(side="right")
         self.b_help.pack(side="right", padx=6)
-        self.bar = ttk.Progressbar(f, mode="indeterminate")
+        # Native ttk themes do not reliably allow red/green bars on both platforms.
+        self.bar = tk.Canvas(f, height=14, background="#e3e3e3", highlightthickness=0)
+        self.bar_fill = self.bar.create_rectangle(0, 0, 0, 14, width=0)
+        self.bar_result = None
+        self.bar.bind("<Configure>", lambda event: self.set_bar(self.bar_result))
         self.bar.grid(row=11, column=0, columnspan=3, sticky="ew")
 
         self.log = tk.Text(f, height=14, wrap="word", state="disabled")
@@ -89,6 +93,12 @@ class App:
         self.status = ttk.Label(f, text="Choose your game files, then Check files or Build SD card.")
         self.status.grid(row=13, column=0, columnspan=3, sticky="w", pady=(6, 0))
         root.after(100, self.poll)
+
+    def set_bar(self, success):
+        """Empty while idle/working; fully green or red once a result is known."""
+        self.bar_result = success
+        self.bar.itemconfigure(self.bar_fill, fill="#238636" if success else "#d32f2f")
+        self.bar.coords(self.bar_fill, 0, 0, self.bar.winfo_width() if success is not None else 0, 14)
 
     def show_install(self):
         """The Switch install steps in a scrollable window."""
@@ -152,7 +162,7 @@ class App:
             return
         self.busy = True
         self.b_numpy.state(["disabled"])
-        self.bar.start(12)
+        self.set_bar(None)
         self.status.configure(text="Installing numpy…")
 
         def work():
@@ -179,12 +189,13 @@ class App:
         if self.busy:
             return
         if not self.apk.get():
+            self.set_bar(False)
             messagebox.showwarning(TITLE, "Choose the Six Guns APK first.")
             return
         self.busy = True
         for b in (self.b_check, self.b_build):
             b.state(["disabled"])
-        self.bar.start(12)
+        self.set_bar(None)
         self.log.configure(state="normal")
         self.log.delete("1.0", "end")
         self.log.configure(state="disabled")
@@ -216,9 +227,9 @@ class App:
                 self.busy = False
                 for b in (self.b_check, self.b_build):
                     b.state(["!disabled"])
-                self.bar.stop()
                 if kind == "numpy":
                     ok = build_sd.have_numpy()
+                    self.set_bar(ok)
                     if ok:
                         self.np_row.destroy()
                         self.st.state(["!disabled"])
@@ -228,6 +239,7 @@ class App:
                     self.status.configure(text=msg.splitlines()[0])
                     (messagebox.showinfo if ok else messagebox.showerror)(TITLE, msg)
                     continue
+                self.set_bar(kind == "done")
                 self.status.configure(text=msg if kind == "done" else "Refused: see the message.")
                 if kind == "done" and msg.startswith("SD card files ready"):
                     self.show_install()
