@@ -56,6 +56,13 @@ jobs:
       - name: Zip (Windows)
         if: runner.os == 'Windows'
         run: Compress-Archive -Path "dist/Six Guns SD Builder" -DestinationPath dist/SixGuns-SD-Builder-Windows.zip
+      - name: Include project license in downloads
+        shell: python
+        run: |
+          import pathlib, zipfile
+          for package in pathlib.Path('dist').glob('SixGuns-SD-Builder-*.zip'):
+              with zipfile.ZipFile(package, 'a', compression=zipfile.ZIP_DEFLATED) as archive:
+                  archive.write('LICENSE', 'LICENSE.txt')
       - uses: actions/upload-artifact@v4
         with:
           name: sd-builder-${{ matrix.os }}
