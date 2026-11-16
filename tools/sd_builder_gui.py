@@ -243,6 +243,15 @@ def main():
     # Self-test without a window (packaging checks / CI): SIXGUNS_SD_SELFTEST='{"apk": ..., "obb_dir": ..., "out": ...}'
     st = os.environ.get("SIXGUNS_SD_SELFTEST")
     if st is not None:
+        # Windowed Windows apps may inherit an unusable console handle.
+        # Write packaging-test output to an explicit UTF-8 log instead.
+        log_path = os.environ.get("SIXGUNS_SD_SELFTEST_LOG")
+        if log_path:
+            sys.stdout = open(log_path, "w", encoding="utf-8", buffering=1)
+            sys.stderr = sys.stdout
+        elif getattr(sys, "frozen", False):
+            sys.stdout = open(os.devnull, "w", encoding="utf-8")
+            sys.stderr = sys.stdout
         import json
         args = json.loads(st) if st.strip() else {}
         print("selftest: frozen=%s base=%s nro=%s numpy=%s" % (build_sd.FROZEN, build_sd.BASE, build_sd.default_nro(),
