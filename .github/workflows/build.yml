@@ -22,7 +22,7 @@ jobs:
     needs: nro
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-15, macos-15-intel, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
         run: Compress-Archive -Path "dist/Six Guns SD Builder" -DestinationPath dist/SixGuns-SD-Builder-Windows.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: sd-builder-${{ runner.os }}
+          name: sd-builder-${{ matrix.os }}
           path: dist/SixGuns-SD-Builder-*.zip
       - name: Attach to release
         if: github.event_name == 'release'
