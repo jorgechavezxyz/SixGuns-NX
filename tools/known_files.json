@@ -1,0 +1,25 @@
+{
+  "_comment": "SHA-256 of the game files this port was developed and tested against (Six Guns 2.9.9a, Android, arm64). build_sd.py compares a player's files with these and reports differences; the game files themselves are never distributed with the port.",
+  "package": "com.gameloft.android.ANMP.GloftSXHM",
+  "main_obb": {
+    "name": "main.29431.com.gameloft.android.ANMP.GloftSXHM.obb",
+    "sha256": "07ea412d5fed53c1050031e7f5b491d36539cf509a0eb29012b05403da502212"
+  },
+  "patch_obb": {
+    "name": "patch.29523.com.gameloft.android.ANMP.GloftSXHM.obb",
+    "sha256": "9480370d7c9caad7500fbc3c3bb5a308e05d6cc89f25fb6929b3fe3aa3cfc7a8"
+  },
+  "libAndroid_so": {
+    "path_in_apk": "lib/arm64-v8a/libAndroid.so",
+    "sha256": "502fd831bcd6fe24d7e79f4ef41c3a36c7b6f02515df507c56618b4fd421d08e"
+  },
+  "apk": {
+    "_comment": "Official Gameloft-signed APK of 2.9.9a (version code 29923; signer O=Gameloft, cert SHA-256 2173A248...481C; v1 signature verified, all 948 entries intact). Its lib/arm64-v8a/libAndroid.so is identical to the tested engine. A re-signed copy with the same engine (tested during development) is listed too.",
+    "official_sha256": "224f2f7d9e4e3f49ffbc40094747cb85cae798ce2dc95c14e7026c23d8840f37",
+    "resigned_tested_sha256": "c9d40c8f8282c36d3cd6746c0a5754280893b75a77bb893016c90b298494b66d",
+    "sha256": "224f2f7d9e4e3f49ffbc40094747cb85cae798ce2dc95c14e7026c23d8840f37"
+  },
+  "_known_modified": {
+    "_comment": "Repackaged APKs seen in the wild whose engine differs from Gameloft's (do not use): the APKVISION re-pack (package renamed .apkvision, re-signed) has libAndroid.so cc1b202806120653.... Its libgenerator.so is identical to the official one (libgenerator.so is part of Gameloft's signed APK)."
+  }
+}

@@ -1,0 +1,32 @@
+# game files and anything generated from them: never commit
+*.apk
+*.xapk
+*.apks
+*.obb
+*.so
+sd/
+**/stadium_out/
+**/30_stadium.zip
+# build outputs
+port/*.nro
+port/*.elf
+port/*.nacp
+port/build-elf/
+port/build/
+# local / OS files
+._*
+.DS_Store
+__pycache__/
+*.pyc
+# player data
+save/
+save_backups/
+prefs.txt
+device_id.txt
+log*.txt
+sync_from_clean_source.sh
+privacy_scan.sh
+dist/
+
+HANDOFF.md
+
