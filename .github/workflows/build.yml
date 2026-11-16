@@ -39,6 +39,17 @@ jobs:
         run: python -I -c "import sys; sys.path.insert(0, 'tools'); import build_sd, apk_verify; print('ok', build_sd.PKG)"
       - name: Package
         run: python -m PyInstaller --noconfirm tools/packaging/sd_builder.spec
+      - name: Run packaged self-test
+        shell: python
+        run: |
+          import os, pathlib, subprocess, sys
+          binary = pathlib.Path('dist/Six Guns SD Builder/Six Guns SD Builder.exe') if sys.platform == 'win32' else pathlib.Path('dist/Six Guns SD Builder.app/Contents/MacOS/Six Guns SD Builder')
+          log = pathlib.Path('packaged-selftest.log').resolve()
+          env = dict(os.environ, SIXGUNS_SD_SELFTEST='', SIXGUNS_SD_SELFTEST_LOG=str(log))
+          subprocess.run([str(binary.resolve())], env=env, check=True, timeout=60)
+          result = log.read_text(encoding='utf-8')
+          print(result)
+          assert 'frozen=True' in result and 'numpy=True' in result and 'nro=None' not in result
       - name: Zip (macOS)
         if: runner.os == 'macOS'
         run: cd dist && ditto -c -k --keepParent "Six Guns SD Builder.app" SixGuns-SD-Builder-macOS.zip
