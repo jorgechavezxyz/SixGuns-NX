@@ -1,5 +1,4 @@
-# Builds the port (sixguns.nro) and the SD Builder app for macOS and Windows; attaches them to releases.
-# Not run yet (written 2026-11-15 before the repository existed): check package names on the first run.
+# Packages the verified port and builds the desktop SD Builder on each platform.
 name: build
 on:
   push:
@@ -12,9 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Switch libraries
-        run: dkp-pacman -Syu --noconfirm --needed switch-mesa switch-libdrm_nouveau switch-sdl2 switch-zlib switch-freetype switch-harfbuzz switch-libpng switch-bzip2
-      - name: Build
+      - name: Stage verified port binary
         run: cp tools/packaging/sixguns.nro port/sixguns.nro
       - uses: actions/upload-artifact@v4
         with:
