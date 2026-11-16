@@ -1,5 +1,7 @@
 # Packages the verified port and builds the desktop SD Builder on each platform.
 name: build
+permissions:
+  contents: write
 on:
   push:
   pull_request:
@@ -52,7 +54,11 @@ jobs:
           assert 'frozen=True' in result and 'numpy=True' in result and 'nro=None' not in result
       - name: Zip (macOS)
         if: runner.os == 'macOS'
-        run: cd dist && ditto -c -k --keepParent "Six Guns SD Builder.app" SixGuns-SD-Builder-macOS.zip
+        run: |
+          cd dist
+          arch="$(uname -m)"
+          if [ "$arch" = x86_64 ]; then arch=x64; fi
+          ditto -c -k --keepParent "Six Guns SD Builder.app" "SixGuns-SD-Builder-macOS-$arch.zip"
       - name: Zip (Windows)
         if: runner.os == 'Windows'
         run: Compress-Archive -Path "dist/Six Guns SD Builder" -DestinationPath dist/SixGuns-SD-Builder-Windows.zip
