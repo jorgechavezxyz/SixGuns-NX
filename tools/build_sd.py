@@ -261,7 +261,21 @@ def build(apk, obb_files=(), obb_dir=None, out="sd", nro=None, stadium=False, la
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def self_test():
+    """Packaging check without game files (CI; the desktop launcher before it relies on this tool)."""
+    nro = default_nro()
+    print(f"sixguns-sd-build self-test: frozen={FROZEN} numpy={have_numpy()} nro={nro and os.path.basename(nro)}"
+          f" nro_sha256={nro and sha256_file(nro)}")
+    return 0 if nro and have_numpy() else 1
+
+
 def main():
+    # Line-buffered UTF-8 output: the desktop launcher runs this tool and shows each line as it comes.
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(Exception):
+            stream.reconfigure(encoding="utf-8", line_buffering=True)
+    if "--self-test" in sys.argv:
+        return self_test()
     ap = argparse.ArgumentParser(description="Six Guns NX: build the SD card from your official game files")
     ap.add_argument("--install-help", action="store_true", help="show how to put the result on the Switch")
     ap.add_argument("--apk", required="--install-help" not in sys.argv, help="the official Six Guns 2.9.9a APK (or an XAPK/APKS holding it)")

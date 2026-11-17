@@ -52,6 +52,16 @@ jobs:
           result = log.read_text(encoding='utf-8')
           print(result)
           assert 'frozen=True' in result and 'numpy=True' in result and 'nro=None' not in result
+      - name: Package command-line builder (used by the desktop launcher)
+        run: python -m PyInstaller --noconfirm tools/packaging/sd_builder_cli.spec
+      - name: Command-line builder self-test
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          binary = pathlib.Path('dist/sixguns-sd-build') / ('sixguns-sd-build.exe' if sys.platform == 'win32' else 'sixguns-sd-build')
+          out = subprocess.run([str(binary.resolve()), '--self-test'], capture_output=True, text=True, timeout=120)
+          print(out.stdout, out.stderr)
+          assert out.returncode == 0 and 'frozen=True' in out.stdout and 'numpy=True' in out.stdout
       - name: Zip (macOS)
         if: runner.os == 'macOS'
         run: |

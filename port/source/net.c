@@ -196,7 +196,10 @@ int n_bind(int fd, const void *addr, unsigned len) {
   static int nmine;
   int udp = fd >= 0 && fd < 1024 && is_udp[fd] && a.sin_port;
   int own = 0;
-  for (int i = 0; i < nmine; i++) own |= mine[i] == a.sin_port;
+  /* mine[] holds the ports as the engine asked for them (before the testing offset below), so the game's
+   * own second bind of 7513 is recognised even when lan_port_offset.txt moved the first one. */
+  uint16_t asked = a.sin_port;
+  for (int i = 0; i < nmine; i++) own |= mine[i] == asked;
   if (udp && !own) { int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)); }
   /* Broadcast receive on fixed ports: a Switch got no broadcasts at all on 7513 (not even its own; the
    * emulator does), so it never saw LAN rooms (2026-11-14). SO_BROADCAST is harmless for receiving and some
@@ -216,7 +219,7 @@ int n_bind(int fd, const void *addr, unsigned len) {
     if (off && ntohs(a.sin_port) == 7513) a.sin_port = htons(7513 + off);
   }
   int r = bind(fd, (struct sockaddr *)&a, sizeof(a));
-  if (r == 0 && udp && !own && nmine < 16) mine[nmine++] = a.sin_port;
+  if (r == 0 && udp && !own && nmine < 16) mine[nmine++] = asked;
   debugPrintf("[net] bind(%d, %s:%u) = %d%s\n", fd, inet_ntoa(a.sin_addr), ntohs(a.sin_port), r,
               r < 0 ? strerror(errno) : "");
   FAIL_IF(r);
@@ -243,7 +246,7 @@ int n_accept(int fd, void *addr, unsigned *len) {
   if (!net_on) return -1;
   struct sockaddr_in a;
   socklen_t al = sizeof(a);
-  if (fd < 1024 && !is_nb[fd]) debugPrintf("[net] accept(%d) on a BLOCKING socket ...\n", fd);
+  if (fd >= 0 && fd < 1024 && !is_nb[fd]) debugPrintf("[net] accept(%d) on a BLOCKING socket ...\n", fd);
   int r = accept(fd, (struct sockaddr *)&a, &al);
   if (r < 0) { lin_errno(); return -1; }
   if (r < 1024) is_sock[r] = 1;
@@ -687,19 +690,35 @@ static void free_cam_hook(void *ctrl) {
 static void (*hv_set_visible)(void *, int);
 static int (*hv_is_dead)(void *);
 static void hide_dead_remote_players(void) {
-  static void *hidden[8];
+  /* Tracked by player, not by list index: when another player left while this one was hidden, the list
+   * shifted and the respawned player was never shown again (audit 2026-11-17). Entries whose player is no
+   * longer in the list are dropped. */
+  static void *hidden[16];
   if (!sd_mp_inst || !sd_mp_enabled || !hv_set_visible || !hv_is_dead || !sd_get_mgr) return;
   void *mp = sd_mp_inst();
   if (!mp || !(sd_mp_enabled(mp) & 1)) { memset(hidden, 0, sizeof(hidden)); return; }
   void *mgr = sd_get_mgr();
   int n = mgr ? sd_count(mgr) : 0;
-  for (int i = 0; i < n && i < 8; i++) {
+  void *present[16];
+  int np = 0;
+  for (int i = 0; i < n && i < 16; i++) {
     void *info = sd_info_at(mgr, (unsigned)i);
     void *pl = info ? sd_info_player(info) : NULL;
     if (!pl || (sd_info_local(info) & 1)) continue;
-    int dead = hv_is_dead(pl) & 1;
-    if (dead && hidden[i] != pl) { hv_set_visible(pl, 0); hidden[i] = pl; }
-    else if (!dead && hidden[i] == pl) { hv_set_visible(pl, 1); hidden[i] = NULL; }
+    present[np++] = pl;
+    int dead = hv_is_dead(pl) & 1, slot = -1, free_slot = -1;
+    for (int k = 0; k < 16; k++) {
+      if (hidden[k] == pl) slot = k;
+      else if (!hidden[k] && free_slot < 0) free_slot = k;
+    }
+    if (dead && slot < 0 && free_slot >= 0) { hv_set_visible(pl, 0); hidden[free_slot] = pl; }
+    else if (!dead && slot >= 0) { hv_set_visible(pl, 1); hidden[slot] = NULL; }
+  }
+  for (int k = 0; k < 16; k++) {
+    if (!hidden[k]) continue;
+    int still = 0;
+    for (int i = 0; i < np && !still; i++) still = present[i] == hidden[k];
+    if (!still) hidden[k] = NULL; /* left the match: never touch its (possibly freed) actor again */
   }
 }
 

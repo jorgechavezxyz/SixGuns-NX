@@ -164,7 +164,7 @@ We got Six Guns running on Switch first by loading the original Android arm64 ga
 
 We added controller support across gameplay and most game menus: selecting buttons, moving focus with the sticks and D-pad, confirming with A, and backing out with B. We adapted touch-oriented menus and rebuilt parts of the multiplayer interface, including the LAN lobby and server browser. The original game engine and assets are still supplied by the player; this repository contains our loader, patches and tools.
 
-The desktop companion, [Six Guns Remaster-NX](https://github.com/jorgechavezxyz/sixguns-pc), runs this same Switch port through a dedicated Ryubing-based launcher. Its setup guides players through their own Switch keys, firmware and verified game files.
+The desktop companion, [Six Guns Remaster-NX](https://github.com/jorgechavezxyz/sixguns-pc), runs this same Switch port through a dedicated Ryubing-based launcher. Its setup guides players through their own Switch keys, firmware and verified game files. It installs the game with this repository's SD Builder (`tools/packaging/sd_builder_cli.spec`, the command-line build of `tools/build_sd.py`), so a PC or Mac gets the same checks, the same `sixguns.nro` and the same Stadium map as a Switch, and LAN matches between them use identical builds.
 
 ## License
 
