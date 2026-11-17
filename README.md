@@ -35,6 +35,25 @@ of the game with the tool in this repository.
 
 ## Install
 
+### Easiest: let the Switch set itself up
+
+1. Put the SD card in your computer. In its `switch` folder, make a folder called `sixguns` and copy
+   into it:
+   - `sixguns.nro` (from the releases page),
+   - your official Six Guns 2.9.9a APK (any file name ending in `.apk`),
+   - the two OBB files (loose, in an `obb` folder, or the whole
+     `com.gameloft.android.ANMP.GloftSXHM` folder copied from the phone; about 780 MB).
+2. Put the card back, hold R while starting any game and pick Six Guns in the homebrew menu
+   (see step 4 of [Install on your Switch](#install-on-your-switch)).
+3. The first start shows **Preparing Six Guns...**: it checks that every file is Gameloft's original
+   (SHA-256), unpacks the engine and the APK's assets, moves the files into place and turns on LAN
+   multiplayer, then starts the game. Press B to cancel; if it is interrupted it simply starts over
+   next time. A wrong or modified file is refused with a message naming it. Your saves, settings and
+   mods are never touched, and an install made with the SD Builder is left as it is.
+
+The **Stadium** demo map is not made on the Switch: use the SD Builder below (or copy the
+`mods/30_stadium.zip` it makes) if you want it. Without it the lobby simply lists the original maps.
+
 ### With the SD Builder app (macOS / Windows)
 
 1. Download **Six Guns SD Builder** for your computer from the releases page and unzip it. It already

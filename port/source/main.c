@@ -476,6 +476,10 @@ int main(int argc, char *argv[]) {
     __asm__ volatile("" :: "r"(ryujinx_thread_name_slots[0]));
   }
   { extern void backup_saves(void); backup_saves(); }
+  { /* First launch: build the install from the player's own APK + OBBs (first_run.c). */
+    extern int first_run(void);
+    if (first_run() != 0) { log_close(); return 0; }
+  }
   { /* Explicit marker, emulator only: exercise persistence failure paths without loading the game. */
     FILE *f=fopen(PORT_ROOT "/selftest_memfile","r"), *em=f ? fopen(PORT_ROOT "/emulator_mode","r"):NULL;
     if(f) fclose(f);
@@ -522,7 +526,7 @@ int main(int argc, char *argv[]) {
                 "  homebrew menu, and launch Six Guns from there.", (int)at);
 
   struct stat st;
-  if (stat(SO_PATH, &st) != 0) fatal_error("Missing %s\nSee README for setup.", SO_PATH);
+  if (stat(SO_PATH, &st) != 0) fatal_error("Missing %s\nCopy the official APK and the two OBB files into switch/sixguns/ (see README).", SO_PATH);
   if (stat(OBB_ROOT "/" MAIN_OBB, &st) != 0) fatal_error("Missing %s\nRun prepare_sd.sh again (see README).", OBB_ROOT "/" MAIN_OBB);
   if (stat(APK_PATH, &st) != 0) fatal_error("Missing %s\nRun prepare_sd.sh again (see README).", APK_PATH);
 
