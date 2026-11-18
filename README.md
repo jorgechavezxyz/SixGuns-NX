@@ -103,9 +103,20 @@ You need a Switch that runs homebrew (Atmosphère custom firmware).
 5. The first start takes a little longer. Your saves are in switch/sixguns/save/ with automatic
    backups in switch/sixguns/save_backups/. Quit with + and - together, or from the HOME menu.
 
-Updating the port later: copy a newer sixguns.nro over switch/sixguns/sixguns.nro (saves stay).
+Updating the port later: the game offers new releases itself when the Switch is online (see Updates);
+or copy a newer sixguns.nro over switch/sixguns/sixguns.nro (saves stay).
 Multiplayer: every console in a match needs the same version; custom maps need the same map mods.
 
+
+## Updates
+
+When the Switch is online, Six Guns checks this repository's newest release at startup (at most every
+6 hours; otherwise it starts straight away). If the release's `sixguns.nro` is newer than yours it
+asks: **A** update now, **B** not now, **X** skip this version. The download is checked against the
+SHA-256 GitHub lists for the release before it replaces `switch/sixguns/sixguns.nro`; the previous copy
+stays as `sixguns-prev.nro` (rename it back to roll back). Saves, settings and mods are not touched.
+Offline, or if anything goes wrong, the game simply starts. To turn the check off, create an empty file
+`switch/sixguns/no_update_check`. Remember that every player in a LAN match needs the same version.
 
 ## Controls
 
@@ -153,7 +164,7 @@ that contain the game's own data with people who do not own the game.
 ## Building from source
 
 Install devkitPro with `switch-dev switch-mesa switch-libdrm_nouveau switch-sdl2 switch-zlib
-switch-freetype switch-harfbuzz switch-libpng switch-bzip2`, then:
+switch-freetype switch-harfbuzz switch-libpng switch-bzip2 switch-curl`, then:
 
 ```
 cd port && ./build.sh        # Windows: run it from devkitPro's MSYS2 shell

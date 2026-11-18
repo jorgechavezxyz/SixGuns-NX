@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <switch.h>
 #include "config.h"
 #include "util.h"
@@ -73,6 +74,9 @@ void log_flush(void) {
   int locked = 0;
   for (int i = 0; i < 100 && !(locked = mutexTryLock(&log_mtx)); i++) svcSleepThread(1000000ULL);
   log_write_locked();
+  /* Commit to the card, not only to newlib: an emulator keeps unflushed file
+   * writes in a host buffer, and a power-off loses them on hardware. */
+  if (logf_) fsync(fileno(logf_));
   if (locked) mutexUnlock(&log_mtx);
 }
 

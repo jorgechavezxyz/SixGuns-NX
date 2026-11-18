@@ -30,7 +30,7 @@ CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS  := -g $(ARCH)
 LDFLAGS   = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS     := -lSDL2 -lEGL -lglapi -ldrm_nouveau -lfreetype -lharfbuzz -lfreetype -lpng16 -lbz2 -lz -lstdc++ -lnx -lm
+LIBS     := -lSDL2 -lEGL -lglapi -ldrm_nouveau -lfreetype -lharfbuzz -lfreetype -lpng16 -lbz2 -lcurl -lz -lstdc++ -lnx -lm
 
 LIBDIRS  := $(PORTLIBS) $(LIBNX)
 
@@ -78,6 +78,13 @@ else
 DEPENDS := $(OFILES:.o=.d)
 
 all: $(OUTPUT).nro
+
+# updater.c compares the build time with release dates: rebuild it every time.
+BUILD_EPOCH := $(shell date +%s)
+updater.o: CFLAGS += -DBUILD_EPOCH=$(BUILD_EPOCH)LL
+updater.o: FORCE
+.PHONY: FORCE
+FORCE:
 $(OUTPUT).nro: $(OUTPUT).elf $(OUTPUT).nacp
 $(OUTPUT).elf: $(OFILES)
 

@@ -106,6 +106,7 @@ static void header(void) {
 
 /* Shows a message and waits for + (the caller then quits back to the menu). */
 static void wait_exit(const char *title, const char *msg) {
+  { extern void log_flush(void); log_flush(); } /* the result is in log.txt even if the console is switched off here */
   printf("\x1b[2J\x1b[1;1H\n  %s\n  ", title);
   for (const char *p = title; *p; p++) putchar('=');
   printf("\n\n%s\n\n  Press + to exit.\n", msg);

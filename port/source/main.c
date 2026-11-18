@@ -480,6 +480,10 @@ int main(int argc, char *argv[]) {
     extern int first_run(void);
     if (first_run() != 0) { log_close(); return 0; }
   }
+  { /* Online update check (updater.c): quick, silent when offline; asks before installing. */
+    extern int updater_run(const char *argv0);
+    if (updater_run(argc > 0 ? argv[0] : NULL) != 0) { log_close(); return 0; }
+  }
   { /* Explicit marker, emulator only: exercise persistence failure paths without loading the game. */
     FILE *f=fopen(PORT_ROOT "/selftest_memfile","r"), *em=f ? fopen(PORT_ROOT "/emulator_mode","r"):NULL;
     if(f) fclose(f);
