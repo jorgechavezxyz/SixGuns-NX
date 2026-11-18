@@ -113,8 +113,11 @@ Multiplayer: every console in a match needs the same version; custom maps need t
 When the Switch is online, Six Guns checks this repository's newest release at startup (at most every
 6 hours; otherwise it starts straight away). If the release's `sixguns.nro` is newer than yours it
 asks: **A** update now, **B** not now, **X** skip this version. The download is checked against the
-SHA-256 GitHub lists for the release before it replaces `switch/sixguns/sixguns.nro`; the previous copy
-stays as `sixguns-prev.nro` (rename it back to roll back). Saves, settings and mods are not touched.
+SHA-256 GitHub lists for the release before it is installed in an alternate slot. Open the original
+`sixguns.nro` from the homebrew menu to start the newest completed slot. An interrupted download or
+install leaves the original entry and the last completed update available. To return to the original
+build, remove `update-a.complete` and `update-b.complete` from `switch/sixguns/`. Saves, settings and
+mods are kept.
 Offline, or if anything goes wrong, the game simply starts. To turn the check off, create an empty file
 `switch/sixguns/no_update_check`. Remember that every player in a LAN match needs the same version.
 

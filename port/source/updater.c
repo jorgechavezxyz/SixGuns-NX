@@ -6,7 +6,7 @@
  * was published after this build was made (a newer local build is never
  * "updated" back), the player is asked:
  *   A  update now   - download, check size + SHA-256 + NRO header, swap in
- *                     (previous copy kept as sixguns-prev.nro), restart
+ *                     (previous launchable copy retained), restart
  *   B  not now      - start the game; ask again next time
  *   X  skip version - never ask about this release again (update_skip.txt)
  * The check is quick (short timeouts) and silent when offline, up to date or
@@ -21,6 +21,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <sys/iosupport.h>
 #include <curl/curl.h>
 #include <switch.h>
@@ -36,7 +37,8 @@
 #define CHECK_EVERY  (6 * 3600) /* seconds between online checks (GitHub allows 60 anonymous requests an hour per IP) */
 #define USER_AGENT   "SixGuns-NX-updater"
 #define DL_PATH      PORT_ROOT "/sixguns.nro.download"
-#define PREV_PATH    PORT_ROOT "/sixguns-prev.nro"
+#define BOOT_PATH    PORT_ROOT "/sixguns.nro"
+#define SLOT_PENDING PORT_ROOT "/update-slot.part"
 #define SKIP_PATH    PORT_ROOT "/update_skip.txt"
 #define MAX_NRO      (64u << 20)
 
@@ -44,6 +46,8 @@ static PadState pad;
 static int net_up(void);
 static const devoptab_t *saved_out, *saved_err;
 static int console_on, auto_accept;
+static const char *const slot_nro[] = { PORT_ROOT "/sixguns-update-a.nro", PORT_ROOT "/sixguns-update-b.nro" };
+static const char *const slot_stamp[] = { PORT_ROOT "/update-a.complete", PORT_ROOT "/update-b.complete" };
 
 #define ulog(...) do { const devoptab_t *cur_ = devoptab_list[STD_OUT]; \
     if (console_on) { devoptab_list[STD_OUT] = saved_out; } debugPrintf(__VA_ARGS__); devoptab_list[STD_OUT] = cur_; } while (0)
@@ -282,6 +286,53 @@ static int nro_ok(const char *path, u64 file_size) {
   return size >= 0x80 && size <= file_size;
 }
 
+/* The entry point stays in place. Each slot is eligible only after its stamp is
+ * published, and updating the inactive slot never touches the selected one. */
+static int boot_slot(long long *published) {
+  int best = -1;
+  *published = 0;
+  for (int i = 0; i < 2; i++) {
+    FILE *f = fopen(slot_stamp[i], "r");
+    if (!f) continue;
+    long long epoch = 0;
+    int ok = fscanf(f, "%lld", &epoch) == 1;
+    fclose(f);
+    struct stat st;
+    if (ok && epoch > *published && stat(slot_nro[i], &st) == 0 &&
+        st.st_size > 0 && nro_ok(slot_nro[i], (u64)st.st_size)) {
+      best = i;
+      *published = epoch;
+    }
+  }
+  return best;
+}
+
+static int commit_slot(const char *self, long long published) {
+  long long previous_epoch;
+  int current = boot_slot(&previous_epoch);
+  if (published <= previous_epoch) return -1;
+  /* Also preserve the running slot if it was opened directly in hbmenu. */
+  for (int i = 0; i < 2; i++) {
+    if (!strcmp(self, slot_nro[i])) {
+      if (current >= 0 && current != i) return -1;
+      current = i;
+    }
+  }
+  int next = current == 0 ? 1 : 0;
+  if ((exists(slot_stamp[next]) && remove(slot_stamp[next]) != 0) ||
+      (exists(slot_nro[next]) && remove(slot_nro[next]) != 0) ||
+      rename(DL_PATH, slot_nro[next]) != 0)
+    return -1;
+
+  FILE *stamp = fopen(SLOT_PENDING, "w");
+  if (!stamp) return -1;
+  int ok = fprintf(stamp, "%lld\n", published) > 0 && fflush(stamp) == 0 && fsync(fileno(stamp)) == 0;
+  if (fclose(stamp) != 0) ok = 0;
+  if (ok && rename(SLOT_PENDING, slot_stamp[next]) == 0) return next;
+  remove(SLOT_PENDING);
+  return -1;
+}
+
 static void wait_plus(void) {
   { extern void log_flush(void); log_flush(); } /* the result is in log.txt even if the console is switched off here */
   printf("\n  Press + to continue.\n");
@@ -334,7 +385,8 @@ static int download_and_install(const Release *r, const char *self) {
         rc != CURLE_GOT_NOTHING && rc != CURLE_OK) break;
     ulog("[update] transfer stopped at %llu bytes (%s), resuming\n", (unsigned long long)d.got, curl_easy_strerror(rc));
   }
-  int write_err = fclose(d.f) != 0 || d.failed;
+  int write_err = d.failed || fflush(d.f) != 0 || fsync(fileno(d.f)) != 0;
+  if (fclose(d.f) != 0) write_err = 1;
   u8 h[32];
   char sha[65];
   sha256ContextGetHash(&d.sha, h);
@@ -364,25 +416,23 @@ static int download_and_install(const Release *r, const char *self) {
     wait_plus();
     return 0;
   }
-  /* Swap: keep the current copy as sixguns-prev.nro (manual rollback). */
-  remove(PREV_PATH);
-  if (rename(self, PREV_PATH) != 0 || rename(DL_PATH, self) != 0) {
-    if (!exists(self)) rename(PREV_PATH, self);
+  int slot = commit_slot(self, iso_epoch(r->published));
+  if (slot < 0) {
     remove(DL_PATH);
-    ulog("[update] could not replace %s\n", self);
-    printf("  Could not replace %s.\n  Your current version is unchanged.\n", self);
+    ulog("[update] could not commit update slot\n");
+    printf("  Could not install the update. Your current version is unchanged.\n");
     wait_plus();
     return 0;
   }
   remove(SKIP_PATH);
-  ulog("[update] installed %s (sha256 %s), previous kept as sixguns-prev.nro\n", r->tag, sha);
-  if (envHasNextLoad() && R_SUCCEEDED(envSetNextLoad(self, self))) {
+  ulog("[update] installed %s (sha256 %s) to %s\n", r->tag, sha, slot_nro[slot]);
+  if (envHasNextLoad() && R_SUCCEEDED(envSetNextLoad(slot_nro[slot], slot_nro[slot]))) {
     printf("  Updated to %s. Restarting...\n", r->tag);
     consoleUpdate(NULL);
     svcSleepThread(1500000000ULL);
     return 1;
   }
-  printf("  Updated to %s. Start Six Guns again to use it.\n", r->tag);
+  printf("  Updated to %s. Start %s from the homebrew menu.\n", r->tag, slot_nro[slot]);
   wait_plus();
   return 1;
 }
@@ -489,6 +539,9 @@ static int check(const char *self) {
   /* Cheap checks first; the running nro (8 MB) is hashed only when an offer is possible. */
   ulog("[update] newest release %s (%s) nro %.23s..., built %lld\n", r.tag, r.published, r.digest, (long long)BUILD_EPOCH);
   long long pub = iso_epoch(r.published);
+  long long installed;
+  boot_slot(&installed);
+  if (pub <= installed) return 0;
   if (BUILD_EPOCH && pub <= (long long)BUILD_EPOCH) { ulog("[update] this build is newer than the release, no offer\n"); return 0; }
   char skip[96];
   if (read_marker(SKIP_PATH, skip, sizeof(skip)) && !strcmp(skip, r.digest)) { ulog("[update] %s skipped by the player\n", r.tag); return 0; }
@@ -528,15 +581,23 @@ static int check(const char *self) {
  * version starts (hbloader next-load) instead of continuing. */
 int updater_run(const char *argv0) {
   remove(DL_PATH); /* an interrupted download */
-  if (exists(PORT_ROOT "/no_update_check")) return 0;
   if (exists(PORT_ROOT "/emulator_mode")) {
     char m[32];
     if (!read_marker(PORT_ROOT "/update_check_in_emulator", m, sizeof(m))) return 0;
     auto_accept = !strcmp(m, "accept");
   }
   char self[256];
-  snprintf(self, sizeof(self), "%s", argv0 && !strncmp(argv0, "sdmc:/", 6) && exists(argv0) ? argv0 : PORT_ROOT "/sixguns.nro");
+  snprintf(self, sizeof(self), "%s", argv0 && !strncmp(argv0, "sdmc:/", 6) && exists(argv0) ? argv0 : BOOT_PATH);
   if (!exists(self)) return 0;
+
+  if (!strcmp(self, BOOT_PATH) && envHasNextLoad()) {
+    long long published;
+    int slot = boot_slot(&published);
+    if (slot >= 0 && published > (long long)BUILD_EPOCH &&
+        R_SUCCEEDED(envSetNextLoad(slot_nro[slot], slot_nro[slot])))
+      return 1;
+  }
+  if (exists(PORT_ROOT "/no_update_check")) return 0;
 
   int r = check(self);
   net_down();
